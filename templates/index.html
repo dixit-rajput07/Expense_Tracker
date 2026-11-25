@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kharcha - your expenses</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="icon" type="image/ico" sizes="16x16" href="/static/app.ico">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Instrument+Sans:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script>
+    (function () {
+      var saved = localStorage.getItem('theme');
+      if (saved === 'dark' || saved === 'light') document.documentElement.dataset.theme = saved;
+    })();
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" defer></script>
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</head>
+<body>
+  <div class="toast-stack" id="toast-stack" aria-live="polite" aria-atomic="true"></div>
+
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="wordmark" href="{{ url_for('index') }}"><img src="/static/favicon.png" alt="logo" height="42"></a>
+
+      <div class="topbar-actions">
+        <button type="button" class="theme-toggle" id="dark-mode-toggle"
+                role="switch" aria-checked="false" aria-label="Toggle dark mode">
+          <span class="theme-icon theme-icon-moon" aria-hidden="true">&#127769;</span>
+          <span class="theme-icon theme-icon-sun" aria-hidden="true">&#9728;&#65039;</span>
+        </button>
+
+        <div class="profile-menu">
+          <button type="button" class="profile-trigger" id="profile-trigger"
+                  aria-haspopup="true" aria-expanded="false" aria-controls="profile-dropdown">
+            <span aria-hidden="true">&#128100;</span>
+            <span id="profile-name">{{ username }}</span>
+            <span class="caret" aria-hidden="true">&#9662;</span>
+          </button>
+
+          <div class="dropdown profile-dropdown" id="profile-dropdown" role="menu" hidden>
+            <button type="button" class="dropdown-item" id="edit-profile-trigger" role="menuitem"
+                    aria-haspopup="true" aria-expanded="false" aria-controls="profile-form-dropdown">
+              <span class="item-icon" aria-hidden="true">&#9999;&#65039;</span>
+              <span class="item-label">Edit profile</span>
+            </button>
+
+            <button type="button" class="dropdown-item" id="change-password-trigger" role="menuitem"
+                    aria-haspopup="true" aria-expanded="false" aria-controls="password-dropdown">
+              <span class="item-icon" aria-hidden="true">&#128274;</span>
+              <span class="item-label">Change password</span>
+            </button>
+
+            <a class="dropdown-item danger" href="{{ url_for('logout') }}" role="menuitem">
+              <span class="item-icon" aria-hidden="true">&#128682;</span>
+              <span class="item-label">Logout</span>
+            </a>
+          </div>
+
+          <div class="dropdown profile-form-dropdown" id="profile-form-dropdown" hidden>
+            <h2>Edit profile</h2>
+            <form id="profile-form">
+              <div class="field">
+                <label for="profile-username">Username</label>
+                <input id="profile-username" type="text" minlength="3" maxlength="30" autocomplete="username" required>
+              </div>
+              <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Save changes</button>
+                <button type="button" class="btn btn-secondary" id="profile-cancel">Cancel</button>
+              </div>
+              <p class="msg" id="profile-msg" role="status"></p>
+            </form>
+          </div>
+
+          <div class="dropdown password-dropdown" id="password-dropdown" hidden>
+            <h2>Change password</h2>
+            <form id="password-form">
+              <div class="field">
+                <label for="current-password">Current password</label>
+                <input id="current-password" type="password" autocomplete="current-password" required>
+              </div>
+              <div class="field">
+                <label for="new-password">New password</label>
+                <input id="new-password" type="password" minlength="6" autocomplete="new-password" required>
+              </div>
+              <div class="field">
+                <label for="confirm-password">Confirm new password</label>
+                <input id="confirm-password" type="password" minlength="6" autocomplete="new-password" required>
+              </div>
+              <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Save password</button>
+                <button type="button" class="btn btn-secondary" id="password-cancel">Cancel</button>
+              </div>
+              <p class="msg" id="password-msg" role="status"></p>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <main class="main-col">
+
+      <section class="overview" aria-label="Monthly total">
+        <div class="month-switch">
+          <button type="button" class="icon-btn" id="prev-month" aria-label="Previous month">&lsaquo;</button>
+          <span class="month-name" id="month-name" aria-live="polite"></span>
+          <button type="button" class="icon-btn" id="next-month" aria-label="Next month">&rsaquo;</button>
+        </div>
+        <p class="total-label">Total spent</p>
+        <p class="total"><span id="total">&#8377;0</span></p>
+
+        <div class="money-row">
+          <div class="money-item" id="salary-item" hidden>
+            <span class="money-label">Salary</span>
+            <span class="money-value" id="salary-value"></span>
+          </div>
+          <div class="money-item" id="income-item" hidden>
+            <span class="money-label">Extra income</span>
+            <span class="money-value" id="income-value"></span>
+          </div>
+          <div class="money-item" id="left-item" hidden>
+            <span class="money-label" id="left-label">Left to spend</span>
+            <span class="money-value" id="left-value"></span>
+          </div>
+          <p class="money-none" id="salary-none" hidden></p>
+          <button type="button" class="link-btn" id="salary-toggle"></button>
+        </div>
+
+        <form class="salary-form" id="salary-form" hidden>
+          <h3 id="salary-form-title">Add your salary</h3>
+          <p class="hint" id="salary-form-hint"></p>
+          <div class="salary-row">
+            <div class="field">
+              <label for="salary-amount">Salary (&#8377;)</label>
+              <input id="salary-amount" type="number" inputmode="decimal" min="1" step="0.01" required>
+            </div>
+            <button type="submit" class="btn btn-primary" id="salary-save">Save salary</button>
+            <button type="button" class="btn btn-secondary" id="salary-skip">Skip for now</button>
+            <button type="button" class="btn btn-secondary" id="salary-cancel" hidden>Cancel</button>
+          </div>
+          <p class="msg" id="salary-msg" role="status"></p>
+        </form>
+
+        <div class="income-manager">
+          <ul class="plain-list income-list" id="income-list"></ul>
+          <button type="button" class="link-btn" id="income-toggle">+ Add extra income</button>
+
+          <form class="salary-row income-form" id="income-form" hidden>
+            <div class="field">
+              <label for="income-amount">Amount (&#8377;)</label>
+              <input id="income-amount" type="number" inputmode="decimal" min="0.01" step="0.01" required>
+            </div>
+            <div class="field">
+              <label for="income-source">Source</label>
+              <input id="income-source" type="text" maxlength="100" placeholder="Freelance, Gift, Bonus..." required>
+            </div>
+            <div class="field">
+              <label for="income-date">Date</label>
+              <input id="income-date" type="date" required>
+            </div>
+            <button type="submit" class="btn btn-secondary">Save income</button>
+            <button type="button" class="btn btn-secondary" id="income-cancel">Cancel</button>
+          </form>
+          <p class="msg" id="income-msg" role="status"></p>
+        </div>
+
+        <p class="jump"><a class="btn btn-primary" href="#add-expense">Add expense</a></p>
+      </section>
+
+      <p class="msg" id="page-msg" role="status"></p>
+
+      <section class="block" aria-labelledby="salary-used-heading">
+        <h2 id="salary-used-heading">Income used</h2>
+        <div class="salary-meter" id="salary-meter" hidden>
+          <div class="meter-layout">
+            <div class="ring">
+              <svg viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+                <circle class="ring-track" cx="50" cy="50" r="42" pathLength="100"></circle>
+                <circle class="ring-fill" id="ring-fill" cx="50" cy="50" r="42" pathLength="100"></circle>
+              </svg>
+              <span class="ring-label" id="meter-percent"></span>
+            </div>
+            <div class="meter-details">
+              <p class="meter-amount" id="meter-amount"></p>
+              <div class="bar" id="meter-bar" role="progressbar" aria-label="Share of salary spent"
+                   aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                <div class="fill" id="meter-fill"></div>
+              </div>
+              <p class="status" id="meter-status"></p>
+            </div>
+          </div>
+        </div>
+        <p class="empty" id="meter-empty">Add your salary or an extra income entry above to see how much you have spent.</p>
+      </section>
+
+      <section class="block" aria-labelledby="tips-heading">
+        <h2 id="tips-heading">Smart suggestions</h2>
+        <p class="hint tips-hint">Based on your spending, budgets and salary.</p>
+        <ul class="plain-list tips" id="tips-list"></ul>
+      </section>
+
+      <section class="block" aria-labelledby="charts-heading">
+        <h2 id="charts-heading" class="visually-hidden">Spending charts</h2>
+        <div class="charts">
+          <div>
+            <h3>Where it went</h3>
+            <div id="breakdown-chart-wrap" hidden>
+              <div class="chart-box">
+                <canvas id="pie-canvas" role="img" aria-label="Doughnut chart of spending by category"></canvas>
+              </div>
+              <ul class="plain-list breakdown-list" id="breakdown-list"></ul>
+            </div>
+            <p class="empty" id="breakdown-empty">Add an expense to see how your spending splits by category.</p>
+          </div>
+
+          <div>
+            <h3>Month by month</h3>
+            <div id="trend-chart-wrap" hidden>
+              <div class="chart-box">
+                <canvas id="bar-canvas" role="img" aria-label="Bar chart of total spending per month"></canvas>
+              </div>
+            </div>
+            <p class="empty" id="trend-empty">Your monthly totals will show up here.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="block" aria-labelledby="budgets-heading">
+        <h2 id="budgets-heading">Budgets</h2>
+        <ul class="plain-list" id="budget-list"></ul>
+        <p class="empty" id="budget-empty">No budgets yet. Set a monthly limit for a category below.</p>
+
+        <form class="inline-form" id="budget-form">
+          <div class="field">
+            <label for="budget-category">Category</label>
+            <select id="budget-category" required>
+              {% for c in categories %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label for="budget-limit">Monthly limit (&#8377;)</label>
+            <input id="budget-limit" type="number" inputmode="decimal" min="1" step="0.01" required>
+          </div>
+          <div class="field">
+            <button type="submit" class="btn btn-secondary">Save budget</button>
+          </div>
+        </form>
+        <p class="msg" id="budget-msg" role="status"></p>
+      </section>
+
+      <section class="block" aria-labelledby="ledger-heading">
+        <div class="ledger-head">
+          <h2 id="ledger-heading">Transactions</h2>
+          <div class="ledger-actions">
+            <div class="dropdown-wrap">
+              <button type="button" class="btn btn-secondary btn-small" id="export-trigger"
+                      aria-haspopup="true" aria-expanded="false" aria-controls="export-dropdown">
+                Export <span class="caret" aria-hidden="true">&#9662;</span>
+              </button>
+              <div class="dropdown" id="export-dropdown" role="menu" hidden>
+                <a class="dropdown-item" href="#" id="export-csv" role="menuitem" data-format="csv">
+                  <span class="item-icon" aria-hidden="true">&#128196;</span>
+                  <span class="item-label">CSV</span>
+                </a>
+                <a class="dropdown-item" href="#" id="export-xlsx" role="menuitem" data-format="xlsx">
+                  <span class="item-icon" aria-hidden="true">&#128202;</span>
+                  <span class="item-label">Excel (.xlsx)</span>
+                </a>
+                <a class="dropdown-item" href="#" id="export-pdf" role="menuitem" data-format="pdf">
+                  <span class="item-icon" aria-hidden="true">&#128462;</span>
+                  <span class="item-label">PDF</span>
+                </a>
+              </div>
+            </div>
+            <button type="button" class="btn btn-secondary btn-small" id="import-trigger">Import CSV</button>
+            <input type="file" id="import-file" accept=".csv,text/csv" hidden>
+          </div>
+        </div>
+        <p class="msg" id="import-msg" role="status"></p>
+        <div class="table-wrap" id="ledger-table-wrap" hidden>
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Date</th>
+                <th scope="col">Category</th>
+                <th scope="col">Note</th>
+                <th scope="col" class="col-amt">Amount</th>
+                <th scope="col"><span class="visually-hidden">Actions</span></th>
+              </tr>
+            </thead>
+            <tbody id="ledger-body"></tbody>
+          </table>
+        </div>
+        <p class="empty" id="ledger-empty"></p>
+      </section>
+
+      <section class="block" aria-labelledby="yearly-heading">
+        <div class="ledger-head">
+          <h2 id="yearly-heading">Yearly view</h2>
+          <div class="month-switch year-switch">
+            <button type="button" class="icon-btn" id="prev-year" aria-label="Previous year">&lsaquo;</button>
+            <span class="month-name" id="year-name" aria-live="polite"></span>
+            <button type="button" class="icon-btn" id="next-year" aria-label="Next year">&rsaquo;</button>
+          </div>
+        </div>
+        <p class="total-label">Total spent this year</p>
+        <p class="total"><span id="yearly-total">&#8377;0</span></p>
+
+        <div id="yearly-chart-wrap" hidden>
+          <div class="chart-box">
+            <canvas id="yearly-canvas" role="img" aria-label="Bar chart of spending per month for the year"></canvas>
+          </div>
+        </div>
+        <p class="empty" id="yearly-empty">No expenses recorded for this year yet.</p>
+
+        <div id="yearly-cat-wrap" hidden>
+          <h3>Top categories this year</h3>
+          <ul class="plain-list breakdown-list" id="yearly-breakdown-list"></ul>
+        </div>
+      </section>
+
+      <section class="block" aria-labelledby="compare-heading">
+        <h2 id="compare-heading">Compare two months</h2>
+        <form class="inline-form" id="compare-form">
+          <div class="field">
+            <label for="compare-month-a">Month A</label>
+            <input id="compare-month-a" type="month" required>
+          </div>
+          <div class="field">
+            <label for="compare-month-b">Month B</label>
+            <input id="compare-month-b" type="month" required>
+          </div>
+          <div class="field">
+            <button type="submit" class="btn btn-secondary">Compare</button>
+          </div>
+        </form>
+        <p class="msg" id="compare-msg" role="status"></p>
+
+        <div id="compare-results" hidden>
+          <div class="compare-totals">
+            <div class="money-item">
+              <span class="money-label" id="compare-label-a"></span>
+              <span class="money-value" id="compare-total-a"></span>
+            </div>
+            <div class="money-item">
+              <span class="money-label" id="compare-label-b"></span>
+              <span class="money-value" id="compare-total-b"></span>
+            </div>
+            <div class="money-item">
+              <span class="money-label">Difference</span>
+              <span class="money-value" id="compare-diff"></span>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Category</th>
+                  <th scope="col" class="col-amt" id="compare-th-a"></th>
+                  <th scope="col" class="col-amt" id="compare-th-b"></th>
+                  <th scope="col" class="col-amt">Difference</th>
+                </tr>
+              </thead>
+              <tbody id="compare-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <aside class="side-col">
+      <section class="panel" id="add-expense" aria-labelledby="form-title">
+        <h2 id="form-title">Add expense</h2>
+        <form id="expense-form">
+          <div class="field">
+            <label for="category">Category</label>
+            <select id="category" required>
+              {% for c in categories %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label for="amount">Amount (&#8377;)</label>
+            <input id="amount" type="number" inputmode="decimal" min="0.01" step="0.01" required>
+          </div>
+          <div class="field">
+            <label for="date">Date</label>
+            <input id="date" type="date" required>
+          </div>
+          <div class="field">
+            <label for="note">Note (optional)</label>
+            <input id="note" type="text" maxlength="200" placeholder="e.g. Lunch with friends">
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary" id="save-btn">Save expense</button>
+            <button type="button" class="btn btn-secondary" id="cancel-edit" hidden>Cancel</button>
+          </div>
+        </form>
+        <p class="msg" id="form-msg" role="status"></p>
+      </section>
+    </aside>
+  </div>
+</body>
+</html>

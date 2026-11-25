@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Log in - Kharcha</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="icon" type="image/ico" sizes="16x16" href="/static/app.ico">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Instrument+Sans:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script>
+    (function () {
+      var saved = localStorage.getItem('theme');
+      if (saved === 'dark' || saved === 'light') document.documentElement.dataset.theme = saved;
+    })();
+  </script>
+</head>
+<body>
+  <div class="auth-layout">
+    <section class="auth-brand">
+      <h1 class="auth-wordmark"><img src="/static/favicon.png" alt="logo" ></h1>
+      <p>Log every expense, watch your monthly total and stay inside your budget.</p>
+    </section>
+
+    <main class="auth-form-wrap">
+      <div class="auth-form">
+        <h2>Log in</h2>
+
+        {% if error %}
+          <p class="form-error" role="alert">{{ error }}</p>
+        {% endif %}
+        {% if notice %}
+          <p class="form-notice" role="status">{{ notice }}</p>
+        {% endif %}
+
+        <form method="post" action="{{ url_for('login') }}">
+          <div class="field">
+            <label for="username">Username</label>
+            <input id="username" name="username" type="text" autocomplete="username" required autofocus>
+          </div>
+          <div class="field">
+            <label for="password">Password</label>
+            <input id="password" name="password" type="password" autocomplete="current-password" required>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">Log in</button>
+        </form>
+
+        <p class="switch"><a href="{{ url_for('forgot_password') }}">Forgot password?</a></p>
+        <p class="switch">New here? <a href="{{ url_for('register') }}">Create an account</a></p>
+      </div>
+    </main>
+  </div>
+</body>
+</html>
