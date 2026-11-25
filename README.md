@@ -15,7 +15,7 @@ monthly & yearly summaries, smart spending insights, and CSV/Excel/PDF import-ex
 ## Setup
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/dixit-rajput07/Expense_Tracker.git
 cd <repo-folder>
 
 python -m venv venv
